@@ -11,3 +11,14 @@ __pycache__/
 # System files
 .DS_Store
 Thumbs.db
+
+# Data files
+data/processed/*.csv
+# Uncomment below if you want to exclude raw data as well
+# data/raw/*.csv
+# data/sentiment/*.csv
+
+# Large binary files
+*.pkl
+*.h5
+*.model
