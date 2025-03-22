@@ -1,0 +1,9 @@
+{
+    "last_updated": "2025-03-22 01:39:02",
+    "symbols": [
+        "BTC-USD",
+        "ETH-USD",
+        "XRP-USD"
+    ],
+    "data_source": "Yahoo Finance"
+}
