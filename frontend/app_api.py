@@ -50,14 +50,12 @@ colors = {
     'dark': '#343A40',
     'btc': '#F7931A',
     'eth': '#627EEA',
-    'xrp': '#23292F'
 }
 
 # Define crypto colors
 crypto_colors = {
     'BTC': colors['btc'],
     'ETH': colors['eth'],
-    'XRP': colors['xrp']
 }
 
 # API Helper functions
@@ -372,7 +370,7 @@ def create_layout():
                     tab_style={'backgroundColor': colors['light']},
                     active_tab_style={'backgroundColor': crypto_colors[symbol], 'color': 'white'}
                 )
-                for symbol in ['BTC', 'ETH', 'XRP']
+                for symbol in ['BTC', 'ETH']
             ], className="mb-4"),
             
             # Sentiment analysis
@@ -381,7 +379,7 @@ def create_layout():
                 dbc.Col([
                     dcc.Graph(figure=create_sentiment_chart(symbol))
                 ], md=4)
-                for symbol in ['BTC', 'ETH', 'XRP']
+                for symbol in ['BTC', 'ETH']
             ]),
             
             # Auto-refresh
@@ -400,8 +398,7 @@ app.layout = create_layout
 @app.callback(
     [Output('portfolio-pie-chart', 'figure'),
      Output('BTC-price-chart', 'figure'),
-     Output('ETH-price-chart', 'figure'),
-     Output('XRP-price-chart', 'figure')],
+     Output('ETH-price-chart', 'figure')],
     Input('interval-component', 'n_intervals')
 )
 def update_charts(n):
@@ -409,8 +406,7 @@ def update_charts(n):
     return (
         create_portfolio_pie_chart(),
         create_price_chart('BTC'),
-        create_price_chart('ETH'),
-        create_price_chart('XRP')
+        create_price_chart('ETH')
     )
 
 # Run the app

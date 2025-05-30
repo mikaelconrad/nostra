@@ -43,14 +43,12 @@ colors = {
     'dark': '#343A40',
     'btc': '#F7931A',
     'eth': '#627EEA',
-    'xrp': '#23292F'
 }
 
 # Define crypto colors
 crypto_colors = {
     'BTC-USD': colors['btc'],
-    'ETH-USD': colors['eth'],
-    'XRP-USD': colors['xrp']
+    'ETH-USD': colors['eth']
 }
 
 # Helper functions
@@ -215,14 +213,13 @@ def create_portfolio_summary():
     """Create portfolio summary cards"""
     # Mock portfolio data
     portfolio = {
-        'total_invested': 1000,
-        'current_value': 1150,
-        'profit_loss': 150,
+        'total_invested': 900,
+        'current_value': 1035,
+        'profit_loss': 135,
         'return_percentage': 15,
         'holdings': {
             'BTC-USD': {'amount': 0.01, 'value': 500},
-            'ETH-USD': {'amount': 0.2, 'value': 400},
-            'XRP-USD': {'amount': 500, 'value': 250},
+            'ETH-USD': {'amount': 0.2, 'value': 535},
         }
     }
     
@@ -468,8 +465,7 @@ def create_portfolio_pie_chart():
     # Mock portfolio data
     holdings = {
         'BTC-USD': {'value': 500},
-        'ETH-USD': {'value': 400},
-        'XRP-USD': {'value': 250},
+        'ETH-USD': {'value': 535},
     }
     
     # Create data for pie chart
@@ -534,11 +530,10 @@ def create_correlation_heatmap():
     """Create correlation heatmap for cryptocurrencies"""
     # Mock correlation data
     corr_matrix = pd.DataFrame(
-        [[1.0, 0.8, 0.6], 
-         [0.8, 1.0, 0.7], 
-         [0.6, 0.7, 1.0]],
-        columns=['BTC-USD', 'ETH-USD', 'XRP-USD'],
-        index=['BTC-USD', 'ETH-USD', 'XRP-USD']
+        [[1.0, 0.8], 
+         [0.8, 1.0]],
+        columns=['BTC-USD', 'ETH-USD'],
+        index=['BTC-USD', 'ETH-USD']
     )
     
     # Create heatmap
@@ -589,13 +584,6 @@ app.layout = dbc.Container([
                     html.H3("Ethereum (ETH) Analysis", className="mt-4"),
                     dcc.Graph(id="eth-prediction-chart"),
                     html.Div(id="eth-recommendations")
-                ], width=12)
-            ]),
-            dbc.Row([
-                dbc.Col([
-                    html.H3("Ripple (XRP) Analysis", className="mt-4"),
-                    dcc.Graph(id="xrp-prediction-chart"),
-                    html.Div(id="xrp-recommendations")
                 ], width=12)
             ]),
             dbc.Row([
@@ -666,7 +654,7 @@ app.layout = dbc.Container([
                         dbc.CardBody([
                             html.P("""
                                 This Cryptocurrency Investment Recommendation System is designed to help you make data-driven 
-                                investment decisions for Bitcoin (BTC), Ethereum (ETH), and Ripple (XRP).
+                                investment decisions for Bitcoin (BTC) and Ethereum (ETH).
                             """),
                             html.P("""
                                 The system uses historical price data and sentiment analysis to generate investment 
@@ -721,12 +709,6 @@ def update_btc_recommendations(id):
 def update_eth_recommendations(id):
     return create_recommendation_cards("ETH-USD")
 
-@app.callback(
-    Output("xrp-recommendations", "children"),
-    Input("xrp-recommendations", "id")
-)
-def update_xrp_recommendations(id):
-    return create_recommendation_cards("XRP-USD")
 
 @app.callback(
     Output("portfolio-allocation", "figure"),
@@ -779,12 +761,6 @@ def update_btc_prediction_chart(id):
 def update_eth_prediction_chart(id):
     return create_prediction_chart("ETH-USD")
 
-@app.callback(
-    Output("xrp-prediction-chart", "figure"),
-    Input("xrp-prediction-chart", "id")
-)
-def update_xrp_prediction_chart(id):
-    return create_prediction_chart("XRP-USD")
 
 # Run the app
 if __name__ == "__main__":

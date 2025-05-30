@@ -94,7 +94,7 @@ def is_positive_number(value):
 
 def is_valid_symbol(symbol):
     """Check if cryptocurrency symbol is valid"""
-    valid_symbols = ['BTC', 'ETH', 'XRP']
+    valid_symbols = ['BTC', 'ETH']
     return symbol in valid_symbols
 
 def is_valid_percentage(value):

@@ -146,7 +146,7 @@ def get_portfolio():
         
         # Get current prices
         current_prices = {}
-        for symbol in ['BTC', 'ETH', 'XRP']:
+        for symbol in ['BTC', 'ETH']:
             price_file = os.path.join(config.RAW_DATA_DIRECTORY, f'{symbol}_USD.csv')
             if os.path.exists(price_file):
                 import pandas as pd
@@ -255,7 +255,7 @@ def get_recommendations():
     try:
         recommendations = {}
         
-        for symbol in ['BTC', 'ETH', 'XRP']:
+        for symbol in ['BTC', 'ETH']:
             rec_file = os.path.join(config.RECOMMENDATIONS_DIRECTORY, f'{symbol}_recommendations.json')
             if os.path.exists(rec_file):
                 with open(rec_file, 'r') as f:

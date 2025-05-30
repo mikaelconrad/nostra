@@ -234,7 +234,7 @@ def main():
     create_directories()
     
     # Analyze sentiment for each cryptocurrency
-    for symbol in ['BTC', 'ETH', 'XRP']:
+    for symbol in ['BTC', 'ETH']:
         print(f"\n{'='*50}")
         print(f"Analyzing {symbol} sentiment...")
         print(f"{'='*50}")

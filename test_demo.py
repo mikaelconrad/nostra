@@ -126,7 +126,7 @@ def test_portfolio_operations():
             print(f"✗ Sell failed: {message}")
     
     # Test portfolio metrics
-    current_prices = {'BTC': 52000, 'ETH': 2500, 'XRP': 0.75}
+    current_prices = {'BTC': 52000, 'ETH': 2500}
     metrics = tracker.calculate_performance_metrics(current_prices)
     
     print("\nPortfolio Performance:")

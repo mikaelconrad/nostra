@@ -35,9 +35,28 @@ MONTHLY_CONTRIBUTION = get_env('MONTHLY_CONTRIBUTION', 500, float)  # CHF
 # Cryptocurrency settings
 CRYPTO_SYMBOLS = {
     'BTC-USD': 'Bitcoin',
-    'ETH-USD': 'Ethereum',
-    'XRP-USD': 'Ripple'
+    'ETH-USD': 'Ethereum'
 }
+
+# Game settings
+MIN_CASH_AMOUNT = 100  # CHF minimum starting cash
+DEFAULT_SIMULATION_LENGTHS = [30, 60, 90]  # days
+CUSTOM_SIMULATION_MIN_DAYS = 7
+CUSTOM_SIMULATION_MAX_DAYS = 365
+
+# Game states
+class GameState:
+    SETUP = 'setup'
+    PLAYING = 'playing'
+    COMPLETED = 'completed'
+
+# Simulation date limits
+SIMULATION_EARLIEST_START = '2020-01-01'  # Earliest allowed start date
+SIMULATION_BUFFER_DAYS = 30  # Days before today that simulation must end
+
+# Trading settings
+TRANSACTION_FEE_PERCENTAGE = 0.1  # 0.1% per transaction
+MIN_TRADE_AMOUNT = 10  # CHF minimum trade amount
 
 # Prediction settings
 PREDICTION_HORIZONS = [1, 7, 30]  # days

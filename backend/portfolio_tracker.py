@@ -295,7 +295,7 @@ class PortfolioTracker:
         """Generate daily investment report"""
         # Load current prices
         current_prices = {}
-        for symbol in ['BTC', 'ETH', 'XRP']:
+        for symbol in ['BTC', 'ETH']:
             price_file = os.path.join(config.RAW_DATA_DIRECTORY, f'{symbol}_USD.csv')
             if os.path.exists(price_file):
                 df = pd.read_csv(price_file)
@@ -304,7 +304,7 @@ class PortfolioTracker:
         
         # Load recommendations
         recommendations = {}
-        for symbol in ['BTC', 'ETH', 'XRP']:
+        for symbol in ['BTC', 'ETH']:
             rec_file = os.path.join(config.RECOMMENDATIONS_DIRECTORY, f'{symbol}_recommendations.json')
             if os.path.exists(rec_file):
                 with open(rec_file, 'r') as f:

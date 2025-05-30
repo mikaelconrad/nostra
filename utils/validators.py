@@ -11,8 +11,8 @@ from utils.error_handlers import ValidationError
 logger = setup_logger(__name__)
 
 # Cryptocurrency validation
-VALID_CRYPTO_SYMBOLS = ['BTC', 'ETH', 'XRP']
-VALID_CRYPTO_PAIRS = ['BTC-USD', 'ETH-USD', 'XRP-USD']
+VALID_CRYPTO_SYMBOLS = ['BTC', 'ETH']
+VALID_CRYPTO_PAIRS = ['BTC-USD', 'ETH-USD']
 
 # Numeric constraints
 MIN_TRANSACTION_AMOUNT = 0.00000001  # Minimum crypto amount (1 satoshi)

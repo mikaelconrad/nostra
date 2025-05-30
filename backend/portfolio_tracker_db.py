@@ -269,7 +269,7 @@ class PortfolioTrackerDB:
         """Generate daily investment report"""
         # Get current prices from database
         current_prices = {}
-        for symbol in ['BTC', 'ETH', 'XRP']:
+        for symbol in ['BTC', 'ETH']:
             price = self.db.get_latest_price(symbol)
             if price:
                 current_prices[symbol] = price
