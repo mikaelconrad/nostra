@@ -349,6 +349,99 @@ class CryptoPredictor:
         
         return prediction
     
+    def predict_multiple_horizons(self, horizons=[7, 14, 30], current_date=None):
+        """
+        Make predictions for multiple horizons starting from current_date
+        
+        Args:
+            horizons: List of prediction horizons (days ahead)
+            current_date: Date to start predictions from (defaults to latest available)
+            
+        Returns:
+            Dictionary with predictions for each horizon
+        """
+        predictions = {}
+        
+        # Load data
+        df = self.load_data()
+        feature_df = self.prepare_features(df)
+        
+        # Determine starting point
+        if current_date is None:
+            latest_data = feature_df.iloc[-self.sequence_length:].copy()
+            base_date = feature_df.index[-1]
+        else:
+            # Find the date in the dataframe
+            if isinstance(current_date, str):
+                current_date = pd.to_datetime(current_date)
+            
+            try:
+                date_idx = feature_df.index.get_loc(current_date)
+                latest_data = feature_df.iloc[date_idx-self.sequence_length+1:date_idx+1].copy()
+                base_date = current_date
+            except KeyError:
+                print(f"Date {current_date} not found in data, using latest available")
+                latest_data = feature_df.iloc[-self.sequence_length:].copy()
+                base_date = feature_df.index[-1]
+        
+        # Make predictions for each horizon
+        for horizon in horizons:
+            predicted_price = self.predict(horizon, latest_data)
+            if predicted_price is not None:
+                prediction_date = base_date + pd.Timedelta(days=horizon)
+                predictions[horizon] = {
+                    'predicted_price': float(predicted_price),
+                    'prediction_date': prediction_date,
+                    'base_date': base_date
+                }
+        
+        return predictions
+    
+    def generate_prediction_series(self, current_date, days_ahead=30):
+        """
+        Generate a series of predictions for charting
+        
+        Args:
+            current_date: Starting date for predictions
+            days_ahead: Number of days to predict ahead
+            
+        Returns:
+            DataFrame with prediction dates and values
+        """
+        predictions = []
+        
+        # Load data and get historical context
+        df = self.load_data()
+        feature_df = self.prepare_features(df)
+        
+        if isinstance(current_date, str):
+            current_date = pd.to_datetime(current_date)
+        
+        try:
+            # Get data up to current date
+            historical_data = feature_df[feature_df.index <= current_date]
+            latest_sequence = historical_data.iloc[-self.sequence_length:].copy()
+            
+            # Generate predictions for 7, 14, and 30 day horizons
+            horizons = [7, 14, 30]
+            for horizon in horizons:
+                if horizon <= days_ahead:
+                    predicted_price = self.predict(horizon, latest_sequence)
+                    if predicted_price is not None:
+                        prediction_date = current_date + pd.Timedelta(days=horizon)
+                        predictions.append({
+                            'date': prediction_date,
+                            'predicted_price': predicted_price,
+                            'horizon': horizon,
+                            'type': 'prediction'
+                        })
+            
+            return pd.DataFrame(predictions)
+            
+        except Exception as e:
+            print(f"Error generating prediction series: {str(e)}")
+            return pd.DataFrame()
+    
     def generate_recommendations(self):
         """
         Generate investment recommendations based on predictions

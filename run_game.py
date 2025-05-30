@@ -9,7 +9,7 @@ import os
 # Add the project root to the path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from frontend.app_game_complete import app
+from frontend.app_game_simple import app
 import config
 
 if __name__ == '__main__':

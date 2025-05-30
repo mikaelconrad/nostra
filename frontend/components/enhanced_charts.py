@@ -11,6 +11,7 @@ import numpy as np
 from datetime import datetime, timedelta
 
 from config import CRYPTO_SYMBOLS
+from backend.neural_network_model import CryptoPredictor
 
 
 def create_dual_price_chart(btc_data, eth_data, current_date, days_back=30):
@@ -420,3 +421,403 @@ def create_trading_activity_chart(transactions):
     )
     
     return fig
+
+
+def create_predictive_chart_btc(historical_data, current_date, days_back=90, prediction_horizons=[7, 14, 30]):
+    """
+    Create BTC predictive chart showing historical data plus model predictions
+    
+    Args:
+        historical_data: DataFrame with BTC historical data
+        current_date: Current simulation date
+        days_back: Number of historical days to show
+        prediction_horizons: List of prediction horizons [7, 14, 30]
+    
+    Returns:
+        Plotly figure with historical data and predictions
+    """
+    # Filter historical data
+    end_date = datetime.strptime(current_date, '%Y-%m-%d')
+    start_date = end_date - timedelta(days=days_back)
+    
+    historical_filtered = historical_data[
+        (historical_data['Date'] >= start_date.strftime('%Y-%m-%d')) & 
+        (historical_data['Date'] <= current_date)
+    ].copy()
+    
+    fig = go.Figure()
+    
+    # Add historical price line
+    fig.add_trace(
+        go.Scatter(
+            x=historical_filtered['Date'],
+            y=historical_filtered['Close'],
+            mode='lines',
+            name='Historical Price',
+            line=dict(color='#F7931A', width=2),
+            hovertemplate='<b>Historical BTC</b><br>Date: %{x}<br>Price: CHF %{y:,.2f}<extra></extra>'
+        )
+    )
+    
+    # Generate predictions using the neural network model
+    try:
+        predictor = CryptoPredictor('BTC-USD')
+        predictions = predictor.predict_multiple_horizons(
+            horizons=prediction_horizons,
+            current_date=current_date
+        )
+        
+        # Add prediction points
+        pred_dates = []
+        pred_prices = []
+        pred_labels = []
+        
+        for horizon, pred_data in predictions.items():
+            pred_dates.append(pred_data['prediction_date'].strftime('%Y-%m-%d'))
+            pred_prices.append(pred_data['predicted_price'])
+            pred_labels.append(f"{horizon}d prediction")
+        
+        if pred_dates:
+            # Add prediction points
+            fig.add_trace(
+                go.Scatter(
+                    x=pred_dates,
+                    y=pred_prices,
+                    mode='markers',
+                    name='Predictions',
+                    marker=dict(
+                        size=10,
+                        color=['#FF6B6B', '#4ECDC4', '#45B7D1'],
+                        symbol='star',
+                        line=dict(width=2, color='white')
+                    ),
+                    text=pred_labels,
+                    hovertemplate='<b>%{text}</b><br>Date: %{x}<br>Price: CHF %{y:,.2f}<extra></extra>'
+                )
+            )
+            
+            # Add prediction lines from current price to each prediction
+            current_price = historical_filtered.iloc[-1]['Close'] if not historical_filtered.empty else 0
+            
+            for i, (pred_date, pred_price) in enumerate(zip(pred_dates, pred_prices)):
+                fig.add_trace(
+                    go.Scatter(
+                        x=[current_date, pred_date],
+                        y=[current_price, pred_price],
+                        mode='lines',
+                        name=f'{prediction_horizons[i]}-day trend',
+                        line=dict(
+                            color=['rgba(255,107,107,0.5)', 'rgba(78,205,196,0.5)', 'rgba(69,183,209,0.5)'][i],
+                            width=2,
+                            dash='dot'
+                        ),
+                        showlegend=False,
+                        hoverinfo='skip'
+                    )
+                )
+    
+    except Exception as e:
+        print(f"Error generating BTC predictions: {str(e)}")
+        # Add a note that predictions are not available
+        fig.add_annotation(
+            x=0.99, y=0.99,
+            text="Predictions unavailable",
+            showarrow=False,
+            xref="paper", yref="paper",
+            bgcolor="rgba(255,255,255,0.8)",
+            bordercolor="red",
+            borderwidth=1
+        )
+    
+    # Add current date marker
+    if not historical_filtered.empty:
+        current_price = historical_filtered.iloc[-1]['Close']
+        fig.add_trace(
+            go.Scatter(
+                x=[current_date],
+                y=[current_price],
+                mode='markers',
+                name='Current Price',
+                marker=dict(size=12, color='#F7931A', symbol='circle', line=dict(width=3, color='white')),
+                hovertemplate='<b>Current BTC</b><br>Date: %{x}<br>Price: CHF %{y:,.2f}<extra></extra>'
+            )
+        )
+    
+    # Update layout
+    fig.update_layout(
+        title="Bitcoin Price - Historical Data & AI Predictions",
+        xaxis_title="Date",
+        yaxis_title="Price (CHF)",
+        hovermode='x unified',
+        height=400,
+        margin=dict(t=50, b=50, l=60, r=60),
+        legend=dict(x=0.02, y=0.98),
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(248,249,250,1)'
+    )
+    
+    return fig
+
+
+def create_predictive_chart_eth(historical_data, current_date, days_back=90, prediction_horizons=[7, 14, 30]):
+    """
+    Create ETH predictive chart showing historical data plus model predictions
+    
+    Args:
+        historical_data: DataFrame with ETH historical data
+        current_date: Current simulation date
+        days_back: Number of historical days to show
+        prediction_horizons: List of prediction horizons [7, 14, 30]
+    
+    Returns:
+        Plotly figure with historical data and predictions
+    """
+    # Filter historical data
+    end_date = datetime.strptime(current_date, '%Y-%m-%d')
+    start_date = end_date - timedelta(days=days_back)
+    
+    historical_filtered = historical_data[
+        (historical_data['Date'] >= start_date.strftime('%Y-%m-%d')) & 
+        (historical_data['Date'] <= current_date)
+    ].copy()
+    
+    fig = go.Figure()
+    
+    # Add historical price line
+    fig.add_trace(
+        go.Scatter(
+            x=historical_filtered['Date'],
+            y=historical_filtered['Close'],
+            mode='lines',
+            name='Historical Price',
+            line=dict(color='#627EEA', width=2),
+            hovertemplate='<b>Historical ETH</b><br>Date: %{x}<br>Price: CHF %{y:,.2f}<extra></extra>'
+        )
+    )
+    
+    # Generate predictions using the neural network model
+    try:
+        predictor = CryptoPredictor('ETH-USD')
+        predictions = predictor.predict_multiple_horizons(
+            horizons=prediction_horizons,
+            current_date=current_date
+        )
+        
+        # Add prediction points
+        pred_dates = []
+        pred_prices = []
+        pred_labels = []
+        
+        for horizon, pred_data in predictions.items():
+            pred_dates.append(pred_data['prediction_date'].strftime('%Y-%m-%d'))
+            pred_prices.append(pred_data['predicted_price'])
+            pred_labels.append(f"{horizon}d prediction")
+        
+        if pred_dates:
+            # Add prediction points
+            fig.add_trace(
+                go.Scatter(
+                    x=pred_dates,
+                    y=pred_prices,
+                    mode='markers',
+                    name='Predictions',
+                    marker=dict(
+                        size=10,
+                        color=['#FF6B6B', '#4ECDC4', '#45B7D1'],
+                        symbol='star',
+                        line=dict(width=2, color='white')
+                    ),
+                    text=pred_labels,
+                    hovertemplate='<b>%{text}</b><br>Date: %{x}<br>Price: CHF %{y:,.2f}<extra></extra>'
+                )
+            )
+            
+            # Add prediction lines from current price to each prediction
+            current_price = historical_filtered.iloc[-1]['Close'] if not historical_filtered.empty else 0
+            
+            for i, (pred_date, pred_price) in enumerate(zip(pred_dates, pred_prices)):
+                fig.add_trace(
+                    go.Scatter(
+                        x=[current_date, pred_date],
+                        y=[current_price, pred_price],
+                        mode='lines',
+                        name=f'{prediction_horizons[i]}-day trend',
+                        line=dict(
+                            color=['rgba(255,107,107,0.5)', 'rgba(78,205,196,0.5)', 'rgba(69,183,209,0.5)'][i],
+                            width=2,
+                            dash='dot'
+                        ),
+                        showlegend=False,
+                        hoverinfo='skip'
+                    )
+                )
+    
+    except Exception as e:
+        print(f"Error generating ETH predictions: {str(e)}")
+        # Add a note that predictions are not available
+        fig.add_annotation(
+            x=0.99, y=0.99,
+            text="Predictions unavailable",
+            showarrow=False,
+            xref="paper", yref="paper",
+            bgcolor="rgba(255,255,255,0.8)",
+            bordercolor="red",
+            borderwidth=1
+        )
+    
+    # Add current date marker
+    if not historical_filtered.empty:
+        current_price = historical_filtered.iloc[-1]['Close']
+        fig.add_trace(
+            go.Scatter(
+                x=[current_date],
+                y=[current_price],
+                mode='markers',
+                name='Current Price',
+                marker=dict(size=12, color='#627EEA', symbol='circle', line=dict(width=3, color='white')),
+                hovertemplate='<b>Current ETH</b><br>Date: %{x}<br>Price: CHF %{y:,.2f}<extra></extra>'
+            )
+        )
+    
+    # Update layout
+    fig.update_layout(
+        title="Ethereum Price - Historical Data & AI Predictions",
+        xaxis_title="Date",
+        yaxis_title="Price (CHF)",
+        hovermode='x unified',
+        height=400,
+        margin=dict(t=50, b=50, l=60, r=60),
+        legend=dict(x=0.02, y=0.98),
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(248,249,250,1)'
+    )
+    
+    return fig
+
+
+def create_combined_prediction_charts(btc_data, eth_data, current_date, prediction_horizons=[7, 14, 30]):
+    """
+    Create a combined view of BTC and ETH predictions
+    
+    Args:
+        btc_data: DataFrame with BTC historical data
+        eth_data: DataFrame with ETH historical data
+        current_date: Current simulation date
+        prediction_horizons: List of prediction horizons [7, 14, 30]
+    
+    Returns:
+        Dictionary with individual charts for each horizon
+    """
+    charts = {}
+    
+    for horizon in prediction_horizons:
+        fig = make_subplots(
+            rows=2, cols=1,
+            subplot_titles=[f'Bitcoin {horizon}-Day Prediction', f'Ethereum {horizon}-Day Prediction'],
+            vertical_spacing=0.1
+        )
+        
+        # Filter data for the last 30 days
+        end_date = datetime.strptime(current_date, '%Y-%m-%d')
+        start_date = end_date - timedelta(days=30)
+        
+        btc_filtered = btc_data[
+            (btc_data['Date'] >= start_date.strftime('%Y-%m-%d')) & 
+            (btc_data['Date'] <= current_date)
+        ].copy()
+        
+        eth_filtered = eth_data[
+            (eth_data['Date'] >= start_date.strftime('%Y-%m-%d')) & 
+            (eth_data['Date'] <= current_date)
+        ].copy()
+        
+        # Add BTC historical data
+        fig.add_trace(
+            go.Scatter(
+                x=btc_filtered['Date'],
+                y=btc_filtered['Close'],
+                mode='lines',
+                name='BTC Historical',
+                line=dict(color='#F7931A', width=2)
+            ),
+            row=1, col=1
+        )
+        
+        # Add ETH historical data
+        fig.add_trace(
+            go.Scatter(
+                x=eth_filtered['Date'],
+                y=eth_filtered['Close'],
+                mode='lines',
+                name='ETH Historical',
+                line=dict(color='#627EEA', width=2)
+            ),
+            row=2, col=1
+        )
+        
+        # Add predictions
+        try:
+            # BTC predictions
+            btc_predictor = CryptoPredictor('BTC-USD')
+            btc_predictions = btc_predictor.predict_multiple_horizons(
+                horizons=[horizon],
+                current_date=current_date
+            )
+            
+            if horizon in btc_predictions:
+                pred_data = btc_predictions[horizon]
+                current_btc_price = btc_filtered.iloc[-1]['Close'] if not btc_filtered.empty else 0
+                
+                fig.add_trace(
+                    go.Scatter(
+                        x=[current_date, pred_data['prediction_date'].strftime('%Y-%m-%d')],
+                        y=[current_btc_price, pred_data['predicted_price']],
+                        mode='lines+markers',
+                        name=f'BTC {horizon}d Prediction',
+                        line=dict(color='#FF6B6B', width=3, dash='dot'),
+                        marker=dict(size=8, color='#FF6B6B', symbol='star')
+                    ),
+                    row=1, col=1
+                )
+            
+            # ETH predictions
+            eth_predictor = CryptoPredictor('ETH-USD')
+            eth_predictions = eth_predictor.predict_multiple_horizons(
+                horizons=[horizon],
+                current_date=current_date
+            )
+            
+            if horizon in eth_predictions:
+                pred_data = eth_predictions[horizon]
+                current_eth_price = eth_filtered.iloc[-1]['Close'] if not eth_filtered.empty else 0
+                
+                fig.add_trace(
+                    go.Scatter(
+                        x=[current_date, pred_data['prediction_date'].strftime('%Y-%m-%d')],
+                        y=[current_eth_price, pred_data['predicted_price']],
+                        mode='lines+markers',
+                        name=f'ETH {horizon}d Prediction',
+                        line=dict(color='#FF6B6B', width=3, dash='dot'),
+                        marker=dict(size=8, color='#FF6B6B', symbol='star')
+                    ),
+                    row=2, col=1
+                )
+        
+        except Exception as e:
+            print(f"Error generating predictions for {horizon} days: {str(e)}")
+        
+        # Update layout
+        fig.update_layout(
+            title=f"Crypto Predictions - {horizon} Days Ahead",
+            height=600,
+            margin=dict(t=50, b=50, l=60, r=60),
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(248,249,250,1)'
+        )
+        
+        fig.update_xaxes(title_text="Date")
+        fig.update_yaxes(title_text="Price (CHF)")
+        
+        charts[horizon] = fig
+    
+    return charts

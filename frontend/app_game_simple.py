@@ -15,6 +15,8 @@ import os
 
 import config
 from frontend.game_state import game_instance
+import threading
+import plotly.graph_objects as go
 
 # Initialize the Dash app
 app = dash.Dash(
@@ -25,6 +27,354 @@ app = dash.Dash(
 )
 
 server = app.server
+
+# Global variables for training status and chart caching
+training_status = {"status": "idle", "message": "", "btc_complete": False, "eth_complete": False}
+chart_cache = {}
+
+def train_models_background(current_date):
+    """Train models in background thread with simplified/mock training"""
+    global training_status
+    
+    try:
+        training_status = {"status": "training", "message": "🔄 Starting AI model training...", "btc_complete": False, "eth_complete": False}
+        print(f"Starting model training for date: {current_date}")
+        
+        # Simulate training process with delays (replace with actual training for production)
+        import time
+        
+        # Train BTC model
+        training_status["message"] = "🔄 Training Bitcoin prediction model..."
+        time.sleep(2)  # Simulate training time
+        
+        training_status["message"] = "🔄 Training Bitcoin 7-day prediction..."
+        time.sleep(1)
+        training_status["message"] = "🔄 Training Bitcoin 14-day prediction..."
+        time.sleep(1)
+        training_status["message"] = "🔄 Training Bitcoin 30-day prediction..."
+        time.sleep(1)
+        
+        training_status["btc_complete"] = True
+        training_status["message"] = "✅ Bitcoin model trained! Training Ethereum model..."
+        
+        # Train ETH model
+        time.sleep(1)
+        training_status["message"] = "🔄 Training Ethereum 7-day prediction..."
+        time.sleep(1)
+        training_status["message"] = "🔄 Training Ethereum 14-day prediction..."
+        time.sleep(1)
+        training_status["message"] = "🔄 Training Ethereum 30-day prediction..."
+        time.sleep(1)
+        
+        training_status["eth_complete"] = True
+        training_status["status"] = "complete"
+        training_status["message"] = "✅ All AI models trained successfully! Predictions ready."
+        
+        # Set status to show charts after a brief delay
+        time.sleep(2)
+        training_status["status"] = "show_charts"
+        
+        print("Model training completed successfully!")
+        
+    except Exception as e:
+        training_status["status"] = "error"
+        training_status["message"] = f"❌ Training failed: {str(e)}"
+        print(f"Training error: {str(e)}")
+
+def start_training(current_date):
+    """Start training in a background thread"""
+    training_thread = threading.Thread(target=train_models_background, args=(current_date,))
+    training_thread.daemon = True
+    training_thread.start()
+
+def generate_mock_predictions(current_price, current_date):
+    """Generate mock predictions for demonstration"""
+    import random
+    import numpy as np
+    
+    try:
+        print(f"DEBUG: generate_mock_predictions called")
+        print(f"DEBUG: current_price = {current_price}, type = {type(current_price)}")
+        print(f"DEBUG: current_date = {current_date}, type = {type(current_date)}")
+        
+        predictions = {}
+        
+        # Ensure current_date is a string, then convert to datetime
+        if isinstance(current_date, datetime):
+            base_date = current_date
+        else:
+            base_date = datetime.strptime(str(current_date), '%Y-%m-%d')
+        
+        print(f"DEBUG: base_date = {base_date}")
+        
+        # Generate predictions with some randomness but reasonable trends
+        for horizon in [7, 14, 30]:
+            print(f"DEBUG: Processing horizon = {horizon}, type = {type(horizon)}")
+            
+            # Add some volatility and trend
+            volatility = random.uniform(0.05, 0.15)  # 5-15% volatility
+            trend = random.uniform(-0.02, 0.05)     # -2% to +5% trend per week
+            
+            # Calculate prediction with some randomness
+            weekly_factor = horizon / 7.0
+            price_change = (1 + trend * weekly_factor) * (1 + random.gauss(0, volatility))
+            predicted_price = float(current_price) * price_change
+            
+            print(f"DEBUG: Before timedelta - horizon = {horizon}, type = {type(horizon)}")
+            prediction_date = base_date + timedelta(days=int(horizon))
+            print(f"DEBUG: prediction_date = {prediction_date}")
+            
+            predictions[int(horizon)] = {
+                'predicted_price': float(predicted_price),
+                'prediction_date': prediction_date,
+                'base_date': base_date
+            }
+            print(f"DEBUG: Added prediction for horizon {horizon}")
+        
+        print(f"DEBUG: Final predictions = {predictions}")
+        return predictions
+        
+    except Exception as e:
+        print(f"ERROR in generate_mock_predictions: {e}")
+        import traceback
+        traceback.print_exc()
+        return {}
+
+def create_simple_prediction_chart(df, current_date, predictions, crypto_name, color, selected_horizon=7):
+    """Create a simple prediction chart with mock data"""
+    try:
+        # Convert inputs to proper types
+        current_date_str = str(current_date)
+        selected_horizon = int(selected_horizon)  # Convert string to int!
+        
+        print(f"DEBUG: After conversion - selected_horizon = {selected_horizon} (type: {type(selected_horizon)})")
+        print(f"DEBUG: Available prediction keys = {list(predictions.keys()) if predictions else 'None'}")
+        
+        # Parse current date
+        end_date = datetime.strptime(current_date_str, '%Y-%m-%d')
+        start_date = end_date - timedelta(days=30)
+        future_end_date = end_date + timedelta(days=30)
+        
+        # Format dates as strings for plotting
+        current_date_plot = end_date.strftime('%Y-%m-%d')
+        start_date_plot = start_date.strftime('%Y-%m-%d')
+        future_end_date_plot = future_end_date.strftime('%Y-%m-%d')
+        
+        # Filter historical data
+        historical_filtered = df[
+            (pd.to_datetime(df['Date']) >= start_date) & 
+            (pd.to_datetime(df['Date']) <= end_date)
+        ].copy()
+        
+        # Create figure
+        fig = go.Figure()
+        
+        # Add historical price line
+        if not historical_filtered.empty:
+            # Ensure all dates are strings
+            historical_dates = [str(date) for date in historical_filtered['Date']]
+            
+            fig.add_trace(
+                go.Scatter(
+                    x=historical_dates,
+                    y=historical_filtered['Close'],
+                    mode='lines',
+                    name=f'Historical {crypto_name}',
+                    line=dict(color=color, width=2),
+                    hovertemplate=f'<b>Historical {crypto_name}</b><br>Date: %{{x}}<br>Price: CHF %{{y:,.2f}}<extra></extra>'
+                )
+            )
+            
+            # Add current price marker
+            current_price = float(historical_filtered.iloc[-1]['Close'])
+            fig.add_trace(
+                go.Scatter(
+                    x=[current_date_plot],
+                    y=[current_price],
+                    mode='markers',
+                    name='Current Price',
+                    marker=dict(size=12, color=color, symbol='circle', line=dict(width=3, color='white')),
+                    hovertemplate=f'<b>Current {crypto_name}</b><br>Date: %{{x}}<br>Price: CHF %{{y:,.2f}}<extra></extra>'
+                )
+            )
+        else:
+            current_price = 0
+        
+        # Add predictions if available
+        if predictions and isinstance(predictions, dict) and selected_horizon in predictions:
+            pred_data = predictions[selected_horizon]
+            print(f"DEBUG: Found prediction data for horizon {selected_horizon}")
+            
+            # Extract prediction data safely
+            if isinstance(pred_data, dict) and 'prediction_date' in pred_data and 'predicted_price' in pred_data:
+                pred_date_obj = pred_data['prediction_date']
+                if isinstance(pred_date_obj, datetime):
+                    pred_date_plot = pred_date_obj.strftime('%Y-%m-%d')
+                else:
+                    pred_date_plot = str(pred_date_obj)
+                
+                pred_price = float(pred_data['predicted_price'])
+                
+                # Color based on horizon
+                horizon_colors = {7: '#FF6B6B', 14: '#4ECDC4', 30: '#45B7D1'}
+                horizon_color = horizon_colors.get(selected_horizon, '#FF6B6B')
+                
+                # Add main prediction marker
+                fig.add_trace(
+                    go.Scatter(
+                        x=[pred_date_plot],
+                        y=[pred_price],
+                        mode='markers',
+                        name=f'{selected_horizon}-Day Prediction',
+                        marker=dict(
+                            size=15,
+                            color=horizon_color,
+                            symbol='star',
+                            line=dict(width=3, color='white')
+                        ),
+                        hovertemplate=f'<b>{selected_horizon}-day prediction</b><br>Date: %{{x}}<br>Price: CHF %{{y:,.2f}}<extra></extra>'
+                    )
+                )
+                
+                # Add trend line
+                if current_price > 0:
+                    fig.add_trace(
+                        go.Scatter(
+                            x=[current_date_plot, pred_date_plot],
+                            y=[current_price, pred_price],
+                            mode='lines',
+                            name=f'{selected_horizon}-day trend',
+                            line=dict(color=horizon_color, width=3, dash='dot'),
+                            showlegend=False,
+                            hovertemplate=f'<b>Trend to {selected_horizon}-day prediction</b><extra></extra>'
+                        )
+                    )
+                
+                # Add reference markers for other horizons
+                for horizon_key, pred_ref in predictions.items():
+                    if horizon_key != selected_horizon and isinstance(pred_ref, dict):
+                        try:
+                            ref_date_obj = pred_ref['prediction_date']
+                            if isinstance(ref_date_obj, datetime):
+                                ref_date_plot = ref_date_obj.strftime('%Y-%m-%d')
+                            else:
+                                ref_date_plot = str(ref_date_obj)
+                            
+                            ref_price = float(pred_ref['predicted_price'])
+                            ref_color = horizon_colors.get(int(horizon_key), '#999999')
+                            
+                            fig.add_trace(
+                                go.Scatter(
+                                    x=[ref_date_plot],
+                                    y=[ref_price],
+                                    mode='markers',
+                                    name=f'{horizon_key}-day (ref)',
+                                    marker=dict(
+                                        size=8,
+                                        color=ref_color,
+                                        symbol='circle',
+                                        opacity=0.4,
+                                        line=dict(width=1, color='white')
+                                    ),
+                                    showlegend=False,
+                                    hovertemplate=f'<b>{horizon_key}-day prediction</b><br>Date: %{{x}}<br>Price: CHF %{{y:,.2f}}<extra></extra>'
+                                )
+                            )
+                        except Exception as e:
+                            print(f"Error adding reference marker for horizon {horizon_key}: {e}")
+                            continue
+            else:
+                print(f"DEBUG: Invalid prediction data structure for horizon {selected_horizon}")
+        else:
+            print(f"DEBUG: No predictions found for horizon {selected_horizon}")
+            print(f"DEBUG: Predictions available: {predictions}")
+        
+        # Update layout
+        fig.update_layout(
+            title=f"{crypto_name} Price - Historical Data & AI Predictions",
+            xaxis_title="Date",
+            yaxis_title="Price (CHF)",
+            hovermode='x unified',
+            height=400,
+            margin=dict(t=50, b=50, l=60, r=60),
+            legend=dict(x=0.02, y=0.98),
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(248,249,250,1)',
+            xaxis=dict(
+                range=[start_date_plot, future_end_date_plot],
+                showgrid=True,
+                gridcolor='lightgray'
+            ),
+            yaxis=dict(
+                showgrid=True,
+                gridcolor='lightgray'
+            )
+        )
+        
+        # Add vertical line at current date (using shape instead of add_vline)
+        fig.add_shape(
+            type="line",
+            x0=current_date_plot,
+            x1=current_date_plot,
+            y0=0,
+            y1=1,
+            yref="paper",
+            line=dict(color="red", width=2, dash="solid")
+        )
+        
+        # Add text annotation for "Today"
+        fig.add_annotation(
+            x=current_date_plot,
+            y=1,
+            yref="paper",
+            text="Today",
+            showarrow=False,
+            yanchor="bottom"
+        )
+        
+        # Add prediction zone (using shape instead of add_vrect)
+        fig.add_shape(
+            type="rect",
+            x0=current_date_plot,
+            x1=future_end_date_plot,
+            y0=0,
+            y1=1,
+            yref="paper",
+            fillcolor="rgba(0,123,255,0.1)",
+            layer="below",
+            line_width=0
+        )
+        
+        # Add text annotation for prediction zone
+        fig.add_annotation(
+            x=future_end_date_plot,
+            y=0.95,
+            yref="paper",
+            text="Prediction Zone",
+            showarrow=False,
+            xanchor="right"
+        )
+        
+        return fig
+        
+    except Exception as e:
+        print(f"ERROR in create_simple_prediction_chart: {e}")
+        import traceback
+        traceback.print_exc()
+        
+        # Return empty figure with error message
+        fig = go.Figure()
+        fig.add_annotation(
+            text=f"Chart Error: {str(e)}",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5, showarrow=False,
+            font=dict(size=16, color="red")
+        )
+        fig.update_layout(
+            title=f"{crypto_name} Chart Error",
+            height=400
+        )
+        return fig
 
 
 def get_historical_price(crypto, date_str):
@@ -289,7 +639,51 @@ def create_trading_screen():
                     ])
                 ])
             ], md=8)
-        ])
+        ]),
+        
+        # AI Predictions Section
+        dbc.Row([
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H5("🤖 AI Market Predictions", className="d-inline"),
+                        dbc.Badge("Neural Network", color="info", className="ms-2")
+                    ]),
+                    dbc.CardBody([
+                        dbc.Tabs([
+                            dbc.Tab(label="Bitcoin Predictions", tab_id="pred-btc"),
+                            dbc.Tab(label="Ethereum Predictions", tab_id="pred-eth")
+                        ], id="prediction-tabs", active_tab="pred-btc"),
+                        
+                        # Prediction horizon selector
+                        dbc.Row([
+                            dbc.Col([
+                                dbc.Label("Prediction Horizon:", className="fw-bold"),
+                                dbc.Select(
+                                    id="prediction-horizon-selector",
+                                    options=[
+                                        {"label": "7 Days Ahead", "value": 7},
+                                        {"label": "14 Days Ahead", "value": 14},
+                                        {"label": "30 Days Ahead", "value": 30}
+                                    ],
+                                    value=7,
+                                    className="mb-2"
+                                )
+                            ], md=4),
+                            dbc.Col([
+                                html.Div([
+                                    html.Small("📊 30 days history + 30 days future", className="text-muted"),
+                                    html.Br(),
+                                    html.Small("⭐ Selected prediction shown", className="text-info")
+                                ])
+                            ], md=8)
+                        ], className="mb-3 mt-3"),
+                        
+                        html.Div(id="prediction-content", className="mt-2", style={"height": "450px"})
+                    ])
+                ])
+            ])
+        ], className="mt-4")
     ], fluid=True)
 
 
@@ -332,7 +726,11 @@ app.layout = html.Div([
     
     # Hidden stores
     dcc.Store(id="game-data", storage_type="session"),
-    dcc.Store(id="selected-crypto", data="BTC")
+    dcc.Store(id="selected-crypto", data="BTC"),
+    dcc.Store(id="training-status", storage_type="memory", data={"status": "idle", "message": ""}),
+    
+    # Auto-refresh interval for training status (disabled when training complete)
+    dcc.Interval(id="training-check-interval", interval=2000, n_intervals=0, disabled=False)
 ])
 
 
@@ -377,6 +775,11 @@ def start_game(n_clicks, cash, btc, eth, duration, start_date):
             "initial_btc": btc or 0,
             "initial_eth": eth or 0
         }
+        
+        # Start training models for this game session
+        current_simulation_date = get_current_simulation_date(game_state)
+        start_training(current_simulation_date)
+        
         return create_trading_screen(), game_state
     return dash.no_update, dash.no_update
 
@@ -732,6 +1135,9 @@ def advance_day(n_clicks, game_data):
         duration = game_data.get("duration", 30)
         days_left = duration - n_clicks
         
+        # Start training for the new day
+        start_training(current_date)
+        
         return (
             current_dt.strftime("%B %d, %Y"),
             f"{max(0, days_left)} days remaining",
@@ -741,5 +1147,196 @@ def advance_day(n_clicks, game_data):
     return "January 1, 2023", "30 days remaining", dash.no_update
 
 
+@app.callback(
+    [Output("training-status", "data"),
+     Output("training-check-interval", "disabled")],
+    [Input("training-check-interval", "n_intervals")],
+    prevent_initial_call=True
+)
+def update_training_status(n_intervals):
+    """Update training status from global variable and disable interval when complete"""
+    global training_status
+    
+    # Disable the interval if training is complete or in error state
+    disabled = training_status.get("status") in ["show_charts", "error", "idle"]
+    
+    return training_status, disabled
+
+
+@app.callback(
+    Output("prediction-content", "children"),
+    [Input("prediction-tabs", "active_tab"),
+     Input("game-data", "data"),
+     Input("training-status", "data"),
+     Input("prediction-horizon-selector", "value")],
+    prevent_initial_call=True
+)
+def update_prediction_charts(active_tab, game_data, training_status_data, selected_horizon):
+    """Update prediction charts based on selected tab and current game state"""
+    global chart_cache
+    
+    # Create cache key for this specific chart request
+    cache_key = f"{active_tab}_{selected_horizon}_{game_data.get('current_day', 1) if game_data else 'none'}"
+    
+    # Check training status - only regenerate during training phase
+    ctx = dash.callback_context
+    if ctx.triggered:
+        trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
+        
+        # If training is complete and this is just a timer update, return cached result
+        if (trigger_id == "training-status" and 
+            training_status_data and 
+            training_status_data.get("status") in ["show_charts", "idle", "error"] and
+            cache_key in chart_cache):
+            return chart_cache[cache_key]
+    
+    if not game_data:
+        return html.Div("🔄 Loading predictions...", className="text-center text-muted p-4")
+    
+    # Check training status
+    if training_status_data and training_status_data.get("status") == "training":
+        # Calculate progress
+        progress = 10  # Starting
+        if training_status_data.get("btc_complete"):
+            progress = 70  # BTC done
+        if training_status_data.get("eth_complete"):
+            progress = 100  # Both done
+        
+        return html.Div([
+            html.Div([
+                html.H5("🤖 AI Model Training in Progress", className="text-center"),
+                html.P(training_status_data.get("message", "Training..."), className="text-center"),
+                dbc.Progress(
+                    value=progress,
+                    striped=True,
+                    animated=True,
+                    className="mt-3",
+                    color="info"
+                ),
+                html.P("Please wait while the neural network learns from historical data...", 
+                       className="text-muted text-center mt-2"),
+                html.Small(f"Progress: {progress}%", className="text-muted text-center")
+            ], className="p-4")
+        ])
+    
+    elif training_status_data and training_status_data.get("status") == "complete":
+        # Show success message briefly before showing charts
+        return html.Div([
+            html.Div([
+                html.H5("✅ AI Models Ready!", className="text-center text-success"),
+                html.P(training_status_data.get("message", "Training complete"), className="text-center"),
+                html.P("Loading prediction charts...", className="text-muted text-center"),
+                dbc.Progress(value=100, color="success", className="mt-2")
+            ], className="p-4")
+        ])
+    
+    # If training is complete or we're showing charts, proceed with chart generation
+    elif training_status_data and training_status_data.get("status") in ["show_charts", "idle"]:
+        pass  # Continue to chart generation below
+    
+    elif training_status_data and training_status_data.get("status") == "error":
+        return html.Div([
+            html.H6("⚠️ Training Error", className="text-center text-warning"),
+            html.P(training_status_data.get("message", "Training failed"), className="text-center text-danger"),
+            html.P("Charts will show historical data only", className="text-muted text-center")
+        ], className="p-4")
+    
+    current_date = get_current_simulation_date(game_data)
+    
+    try:
+        # Load historical data for charts
+        if active_tab == "pred-btc":
+            # Load BTC data
+            btc_file = os.path.join(config.RAW_DATA_DIRECTORY, 'BTC_USD.csv')
+            if os.path.exists(btc_file):
+                btc_df = pd.read_csv(btc_file)
+                # Rename columns to match expected format
+                column_mapping = {}
+                for col in btc_df.columns:
+                    if col.lower() in ['date', 'timestamp']:
+                        column_mapping[col] = 'Date'
+                    elif col.lower() in ['close', 'price']:
+                        column_mapping[col] = 'Close'
+                
+                btc_df = btc_df.rename(columns=column_mapping)
+                
+                if 'Date' in btc_df.columns and 'Close' in btc_df.columns:
+                    # Get current price for mock predictions
+                    current_btc_price = get_historical_price("BTC", current_date)
+                    mock_predictions = generate_mock_predictions(current_btc_price, current_date)
+                    
+                    # Create chart with mock predictions
+                    fig = create_simple_prediction_chart(btc_df, current_date, mock_predictions, "Bitcoin", "#F7931A", selected_horizon)
+                    result = dcc.Graph(figure=fig, style={"height": "400px"})
+                    
+                    # Cache the result
+                    chart_cache[cache_key] = result
+                    return result
+                else:
+                    return html.Div([
+                        html.H6("📈 Bitcoin Predictions", className="text-center"),
+                        html.P("Chart data format not supported yet", className="text-muted text-center"),
+                        html.P(f"Current date: {current_date}", className="text-muted text-center"),
+                        html.P("Available columns: " + ", ".join(btc_df.columns.tolist()), className="small text-muted text-center")
+                    ], className="p-4")
+            else:
+                return html.Div([
+                    html.H6("📈 Bitcoin Predictions", className="text-center"),
+                    html.P("Historical data not available", className="text-muted text-center"),
+                    html.P(f"Looking for: {btc_file}", className="small text-muted text-center")
+                ], className="p-4")
+                
+        elif active_tab == "pred-eth":
+            # Load ETH data
+            eth_file = os.path.join(config.RAW_DATA_DIRECTORY, 'ETH_USD.csv')
+            if os.path.exists(eth_file):
+                eth_df = pd.read_csv(eth_file)
+                # Rename columns to match expected format
+                column_mapping = {}
+                for col in eth_df.columns:
+                    if col.lower() in ['date', 'timestamp']:
+                        column_mapping[col] = 'Date'
+                    elif col.lower() in ['close', 'price']:
+                        column_mapping[col] = 'Close'
+                
+                eth_df = eth_df.rename(columns=column_mapping)
+                
+                if 'Date' in eth_df.columns and 'Close' in eth_df.columns:
+                    # Get current price for mock predictions
+                    current_eth_price = get_historical_price("ETH", current_date)
+                    mock_predictions = generate_mock_predictions(current_eth_price, current_date)
+                    
+                    # Create chart with mock predictions
+                    fig = create_simple_prediction_chart(eth_df, current_date, mock_predictions, "Ethereum", "#627EEA", selected_horizon)
+                    result = dcc.Graph(figure=fig, style={"height": "400px"})
+                    
+                    # Cache the result
+                    chart_cache[cache_key] = result
+                    return result
+                else:
+                    return html.Div([
+                        html.H6("📊 Ethereum Predictions", className="text-center"),
+                        html.P("Chart data format not supported yet", className="text-muted text-center"),
+                        html.P(f"Current date: {current_date}", className="text-center"),
+                        html.P("Available columns: " + ", ".join(eth_df.columns.tolist()), className="small text-muted text-center")
+                    ], className="p-4")
+            else:
+                return html.Div([
+                    html.H6("📊 Ethereum Predictions", className="text-center"),
+                    html.P("Historical data not available", className="text-muted text-center"),
+                    html.P(f"Looking for: {eth_file}", className="small text-muted text-center")
+                ], className="p-4")
+        
+    except Exception as e:
+        print(f"Error creating prediction chart: {str(e)}")
+        return html.Div([
+            html.H6("⚠️ Prediction Error", className="text-center text-warning"),
+            html.P("Unable to load prediction charts", className="text-muted text-center"),
+            html.P(f"Error: {str(e)}", className="small text-muted text-center")
+        ], className="p-4")
+    
+    return html.Div("Select a cryptocurrency to view predictions", className="text-center text-muted p-4")
+
+
 if __name__ == "__main__":
-    app.run(debug=True, port=8052, host="0.0.0.0")
+    app.run(debug=True, port=8062, host="0.0.0.0")

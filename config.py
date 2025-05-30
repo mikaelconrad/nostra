@@ -59,7 +59,7 @@ TRANSACTION_FEE_PERCENTAGE = 0.1  # 0.1% per transaction
 MIN_TRADE_AMOUNT = 10  # CHF minimum trade amount
 
 # Prediction settings
-PREDICTION_HORIZONS = [1, 7, 30]  # days
+PREDICTION_HORIZONS = [7, 14, 30]  # days
 
 # Directory settings
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
