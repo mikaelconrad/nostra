@@ -1,7 +1,11 @@
 # Virtual environment
 venv/
-.env/
 env/
+
+# Environment files
+.env
+.env.local
+.env.production
 
 # Python cache files
 __pycache__/
@@ -22,3 +26,36 @@ data/processed/*.csv
 *.pkl
 *.h5
 *.model
+
+# Database files
+*.db
+crypto_investment.db
+test_db.db
+
+# Log files
+logs/
+*.log
+
+# Coverage reports
+.coverage
+coverage.xml
+htmlcov/
+
+# Test artifacts
+.pytest_cache/
+pytest_cache/
+
+# IDE files
+.vscode/
+.idea/
+
+# Temporary files
+*.tmp
+*.temp
+*~
+
+# BFG report (from git history cleaning)
+..bfg-report/
+
+# Claude AI files
+.claude/
