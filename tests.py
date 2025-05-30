@@ -11,7 +11,7 @@ import pandas as pd
 from datetime import datetime
 
 # Add project root to path
-sys.path.append('/home/ubuntu/crypto_investment_app')
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import config
 
 class TestCryptoInvestmentSystem(unittest.TestCase):
@@ -20,7 +20,7 @@ class TestCryptoInvestmentSystem(unittest.TestCase):
     def test_data_collection(self):
         """Test data collection functionality"""
         # Import data collector
-        sys.path.append('/home/ubuntu/crypto_investment_app/backend')
+        sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'backend'))
         from data_collector import fetch_crypto_data
         
         # Test data collection for BTC

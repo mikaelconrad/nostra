@@ -13,28 +13,31 @@ import time
 import threading
 
 # Import configuration
-sys.path.append('/home/ubuntu/crypto_investment_app')
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import config
 
 def run_data_collection():
     """Run data collection script"""
     print("Running data collection...")
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     subprocess.run(["python", "backend/data_collector.py"], 
-                  cwd="/home/ubuntu/crypto_investment_app")
+                  cwd=base_dir)
     print("Data collection completed")
 
 def run_data_processing():
     """Run data processing script"""
     print("Running data processing...")
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     subprocess.run(["python", "backend/data_processor.py"], 
-                  cwd="/home/ubuntu/crypto_investment_app")
+                  cwd=base_dir)
     print("Data processing completed")
 
 def run_sentiment_analysis():
     """Run sentiment analysis script"""
     print("Running sentiment analysis...")
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     subprocess.run(["python", "backend/mock_sentiment_generator.py"], 
-                  cwd="/home/ubuntu/crypto_investment_app")
+                  cwd=base_dir)
     print("Sentiment analysis completed")
 
 def run_model_training():

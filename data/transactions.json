@@ -1,0 +1,18 @@
+[
+    {
+        "type": "buy",
+        "symbol": "BTC",
+        "amount": 0.01,
+        "price": 50000.0,
+        "total": 500.0,
+        "timestamp": "2025-05-30T11:39:53.751848"
+    },
+    {
+        "type": "sell",
+        "symbol": "BTC",
+        "amount": 0.005,
+        "price": 52000.0,
+        "total": 260.0,
+        "timestamp": "2025-05-30T11:39:53.752132"
+    }
+]

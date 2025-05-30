@@ -21,8 +21,14 @@ except ImportError:
     print("pdfkit module not available. PDF reports will not be generated.")
 
 # Import configuration
-sys.path.append('/home/ubuntu/crypto_investment_app')
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import config
+from utils.logger import setup_logger
+from utils.validators import CryptoValidator, FinancialValidator
+from utils.error_handlers import ValidationError
+
+# Set up logger
+logger = setup_logger(__name__)
 
 class PortfolioTracker:
     def __init__(self):
@@ -41,237 +47,310 @@ class PortfolioTracker:
         """Load portfolio data from file"""
         if os.path.exists(self.portfolio_file):
             with open(self.portfolio_file, 'r') as f:
-                portfolio = json.load(f)
-            return portfolio
+                return json.load(f)
         else:
-            # Create default portfolio
-            portfolio = {
-                'initial_investment': config.INITIAL_INVESTMENT,
-                'monthly_contribution': config.MONTHLY_CONTRIBUTION,
-                'total_invested': config.INITIAL_INVESTMENT,
-                'current_value': config.INITIAL_INVESTMENT,
-                'holdings': {
-                    'BTC-USD': {'amount': 0, 'value': 0},
-                    'ETH-USD': {'amount': 0, 'value': 0},
-                    'XRP-USD': {'amount': 0, 'value': 0},
-                    'cash': config.INITIAL_INVESTMENT
-                },
-                'transactions': []
+            # Initialize empty portfolio
+            return {
+                'cash': config.INITIAL_INVESTMENT,
+                'holdings': {},
+                'last_update': datetime.now().isoformat()
             }
-            
-            # Save default portfolio
-            self.save_portfolio(portfolio)
-            
-            return portfolio
     
-    def save_portfolio(self, portfolio=None):
+    def save_portfolio(self):
         """Save portfolio data to file"""
-        if portfolio is None:
-            portfolio = self.portfolio
-        
-        # Create directory if it doesn't exist
-        os.makedirs(os.path.dirname(self.portfolio_file), exist_ok=True)
-        
+        self.portfolio['last_update'] = datetime.now().isoformat()
         with open(self.portfolio_file, 'w') as f:
-            json.dump(portfolio, f, indent=4)
+            json.dump(self.portfolio, f, indent=4)
     
-    def update_portfolio_values(self):
-        """Update portfolio values based on current cryptocurrency prices"""
-        # Load latest price data for each cryptocurrency
-        for symbol in config.CRYPTO_SYMBOLS:
-            if symbol in self.portfolio['holdings']:
-                price_file = os.path.join(config.DATA_DIRECTORY, 'processed', f"{symbol.replace('-', '_')}_processed.csv")
-                if os.path.exists(price_file):
-                    df = pd.read_csv(price_file, index_col='date', parse_dates=True)
-                    latest_price = df['close'].iloc[-1]
-                    
-                    # Update holding value
-                    amount = self.portfolio['holdings'][symbol]['amount']
-                    self.portfolio['holdings'][symbol]['value'] = amount * latest_price
-        
-        # Calculate total portfolio value
-        total_value = self.portfolio['holdings']['cash']
-        for symbol, data in self.portfolio['holdings'].items():
-            if symbol != 'cash':
-                total_value += data['value']
-        
-        self.portfolio['current_value'] = total_value
-        
-        # Save updated portfolio
-        self.save_portfolio()
-        
-        return total_value
+    def load_transactions(self):
+        """Load transaction history from file"""
+        if os.path.exists(self.transaction_file):
+            with open(self.transaction_file, 'r') as f:
+                return json.load(f)
+        else:
+            return []
     
-    def add_transaction(self, transaction_type, symbol, amount, price, fee):
-        """
-        Add a new transaction to the portfolio
-        
-        Args:
-            transaction_type: 'buy' or 'sell'
-            symbol: Cryptocurrency symbol (e.g., 'BTC-USD')
-            amount: Amount of cryptocurrency
-            price: Price per unit in USD
-            fee: Transaction fee in CHF
+    def save_transaction(self, transaction):
+        """Save transaction to history"""
+        transactions = self.load_transactions()
+        transactions.append(transaction)
+        with open(self.transaction_file, 'w') as f:
+            json.dump(transactions, f, indent=4)
+    
+    def buy_crypto(self, symbol, amount, price):
+        """Execute buy order for cryptocurrency"""
+        try:
+            # Validate inputs (already validated in API, but double-check)
+            symbol = CryptoValidator.validate_symbol(symbol)
+            amount = CryptoValidator.validate_amount(amount, symbol)
+            price = CryptoValidator.validate_price(price)
             
-        Returns:
-            Success status and message
-        """
-        # Calculate transaction value in CHF
-        value = amount * price
-        
-        # Update portfolio based on transaction type
-        if transaction_type == "buy":
-            # Check if enough cash is available
-            if self.portfolio['holdings']['cash'] < value + fee:
-                return False, "Not enough cash available for this transaction"
+            total_cost = amount * price
             
-            # Update holdings
+            # Validate sufficient funds
+            if self.portfolio['cash'] < total_cost:
+                return False, f"Insufficient funds. Available: CHF {self.portfolio['cash']:.2f}, Required: CHF {total_cost:.2f}"
+            
+            # Deduct cash
+            self.portfolio['cash'] -= total_cost
+            
+            # Add to holdings
             if symbol not in self.portfolio['holdings']:
-                self.portfolio['holdings'][symbol] = {'amount': 0, 'value': 0}
+                self.portfolio['holdings'][symbol] = 0
+            self.portfolio['holdings'][symbol] += amount
             
-            self.portfolio['holdings'][symbol]['amount'] += amount
-            self.portfolio['holdings'][symbol]['value'] += value
-            self.portfolio['holdings']['cash'] -= (value + fee)
-            
-            # Add transaction to history
+            # Save transaction
             transaction = {
-                'date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                 'type': 'buy',
                 'symbol': symbol,
                 'amount': amount,
                 'price': price,
-                'value': value,
-                'fee': fee
+                'total': total_cost,
+                'timestamp': datetime.now().isoformat()
             }
-            self.portfolio['transactions'].append(transaction)
+            self.save_transaction(transaction)
             
-        elif transaction_type == "sell":
-            # Check if enough cryptocurrency is available
-            if symbol not in self.portfolio['holdings'] or self.portfolio['holdings'][symbol]['amount'] < amount:
-                return False, "Not enough cryptocurrency available for this transaction"
+            # Save updated portfolio
+            self.save_portfolio()
+            
+            logger.info(f"Buy order executed: {amount} {symbol} at CHF {price:.2f}")
+            return True, f"Bought {amount} {symbol} at CHF {price:.2f}"
+            
+        except ValidationError as e:
+            logger.error(f"Validation error in buy_crypto: {str(e)}")
+            return False, str(e)
+        except Exception as e:
+            logger.error(f"Error in buy_crypto: {str(e)}", exc_info=True)
+            return False, "Failed to execute buy order"
+    
+    def sell_crypto(self, symbol, amount, price):
+        """Execute sell order for cryptocurrency"""
+        try:
+            # Validate inputs
+            symbol = CryptoValidator.validate_symbol(symbol)
+            amount = CryptoValidator.validate_amount(amount, symbol)
+            price = CryptoValidator.validate_price(price)
+            
+            # Check holdings
+            if symbol not in self.portfolio['holdings']:
+                return False, f"No holdings of {symbol} to sell"
+            
+            current_holdings = self.portfolio['holdings'][symbol]
+            if current_holdings < amount:
+                return False, f"Insufficient holdings. Available: {current_holdings} {symbol}, Requested: {amount} {symbol}"
+            
+            # Calculate proceeds
+            total_proceeds = amount * price
             
             # Update holdings
-            self.portfolio['holdings'][symbol]['amount'] -= amount
-            self.portfolio['holdings'][symbol]['value'] = self.portfolio['holdings'][symbol]['amount'] * price
-            self.portfolio['holdings']['cash'] += (value - fee)
+            self.portfolio['holdings'][symbol] -= amount
+            if self.portfolio['holdings'][symbol] < 0.00000001:  # Handle floating point precision
+                del self.portfolio['holdings'][symbol]
             
-            # Add transaction to history
+            # Add cash
+            self.portfolio['cash'] += total_proceeds
+            
+            # Save transaction
             transaction = {
-                'date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                 'type': 'sell',
                 'symbol': symbol,
                 'amount': amount,
                 'price': price,
-                'value': -value,  # Negative value for sell transactions
-                'fee': fee
+                'total': total_proceeds,
+                'timestamp': datetime.now().isoformat()
             }
-            self.portfolio['transactions'].append(transaction)
-        
-        # Save updated portfolio
-        self.save_portfolio()
-        
-        return True, "Transaction added successfully"
+            self.save_transaction(transaction)
+            
+            # Save updated portfolio
+            self.save_portfolio()
+            
+            logger.info(f"Sell order executed: {amount} {symbol} at CHF {price:.2f}")
+            return True, f"Sold {amount} {symbol} at CHF {price:.2f}"
+            
+        except ValidationError as e:
+            logger.error(f"Validation error in sell_crypto: {str(e)}")
+            return False, str(e)
+        except Exception as e:
+            logger.error(f"Error in sell_crypto: {str(e)}", exc_info=True)
+            return False, "Failed to execute sell order"
     
-    def calculate_portfolio_metrics(self):
+    def get_portfolio_value(self, current_prices):
+        """Calculate total portfolio value"""
+        total_value = self.portfolio['cash']
+        
+        for symbol, amount in self.portfolio['holdings'].items():
+            if symbol in current_prices:
+                total_value += amount * current_prices[symbol]
+        
+        return total_value
+    
+    def get_holdings_by_symbol(self):
+        """Get detailed holdings by symbol"""
+        holdings = {}
+        
+        # Add cash position
+        holdings['cash'] = self.portfolio['cash']
+        
+        # Add crypto holdings
+        for symbol, amount in self.portfolio['holdings'].items():
+            holdings[symbol] = {
+                'amount': amount,
+                'value': 0  # Will be updated with current prices
+            }
+        
+        return holdings
+    
+    def get_allocation(self, current_prices):
+        """Calculate portfolio allocation percentages"""
+        total_value = self.get_portfolio_value(current_prices)
+        allocations = {}
+        
+        # Cash allocation
+        allocations['cash'] = (self.portfolio['cash'] / total_value) * 100 if total_value > 0 else 0
+        
+        # Crypto allocations
+        for symbol, amount in self.portfolio['holdings'].items():
+            if symbol in current_prices:
+                value = amount * current_prices[symbol]
+                allocations[symbol] = (value / total_value) * 100 if total_value > 0 else 0
+        
+        return allocations
+    
+    def calculate_performance_metrics(self, current_prices):
         """Calculate portfolio performance metrics"""
-        # Update portfolio values
-        total_value = self.update_portfolio_values()
+        # Load transaction history
+        transactions = self.load_transactions()
         
-        # Calculate profit/loss
-        profit_loss = total_value - self.portfolio['total_invested']
-        profit_loss_pct = (profit_loss / self.portfolio['total_invested']) * 100 if self.portfolio['total_invested'] > 0 else 0
+        # Calculate total invested
+        total_invested = config.INITIAL_INVESTMENT
         
-        # Calculate allocation percentages
-        allocation = {}
-        for symbol, data in self.portfolio['holdings'].items():
-            if symbol == 'cash':
-                allocation[symbol] = (data / total_value) * 100 if total_value > 0 else 0
-            else:
-                allocation[symbol] = (data['value'] / total_value) * 100 if total_value > 0 else 0
+        # Add monthly contributions based on transaction history
+        if transactions:
+            first_transaction_date = datetime.fromisoformat(transactions[0]['timestamp'])
+            months_active = (datetime.now() - first_transaction_date).days // 30
+            total_invested += months_active * config.MONTHLY_CONTRIBUTION
         
-        # Calculate historical performance
-        historical_performance = self.calculate_historical_performance()
+        # Calculate current value
+        current_value = self.get_portfolio_value(current_prices)
         
-        metrics = {
-            'total_invested': self.portfolio['total_invested'],
-            'current_value': total_value,
-            'profit_loss': profit_loss,
-            'profit_loss_pct': profit_loss_pct,
-            'allocation': allocation,
-            'historical_performance': historical_performance
+        # Calculate returns
+        total_return = current_value - total_invested
+        return_percentage = (total_return / total_invested) * 100 if total_invested > 0 else 0
+        
+        # Calculate allocation
+        allocations = self.get_allocation(current_prices)
+        
+        return {
+            'total_invested': total_invested,
+            'current_value': current_value,
+            'total_return': total_return,
+            'return_percentage': return_percentage,
+            'allocation': allocations
+        }
+    
+    def calculate_historical_performance(self, days=30):
+        """Calculate historical portfolio performance"""
+        # This is a simplified version - in practice, you'd track historical values
+        # For now, we'll return mock data
+        dates = pd.date_range(end=datetime.now(), periods=days)
+        
+        # Generate mock historical values
+        initial_value = config.INITIAL_INVESTMENT
+        values = []
+        
+        for i in range(days):
+            # Simulate portfolio growth with some volatility
+            growth_factor = 1 + (0.001 * i) + np.random.normal(0, 0.02)
+            value = initial_value * growth_factor
+            values.append(value)
+        
+        return pd.DataFrame({
+            'date': dates,
+            'value': values
+        })
+    
+    def get_transaction_summary(self):
+        """Get summary of all transactions"""
+        transactions = self.load_transactions()
+        
+        summary = {
+            'total_buys': 0,
+            'total_sells': 0,
+            'buy_volume': 0,
+            'sell_volume': 0,
+            'transactions': transactions[-10:]  # Last 10 transactions
         }
         
-        return metrics
-    
-    def calculate_historical_performance(self):
-        """Calculate historical portfolio performance"""
-        transactions = self.portfolio['transactions']
+        for tx in transactions:
+            if tx['type'] == 'buy':
+                summary['total_buys'] += 1
+                summary['buy_volume'] += tx['total']
+            else:
+                summary['total_sells'] += 1
+                summary['sell_volume'] += tx['total']
         
-        if not transactions:
-            return []
-        
-        # Create DataFrame from transactions
-        df = pd.DataFrame(transactions)
-        df['date'] = pd.to_datetime(df['date'])
-        df = df.set_index('date')
-        
-        # Resample by day and calculate cumulative portfolio value
-        daily_value = df.resample('D').sum()
-        daily_value['cumulative_value'] = daily_value['value'].cumsum() + config.INITIAL_INVESTMENT
-        
-        # Convert to list of dictionaries for reporting
-        performance = []
-        for date, row in daily_value.iterrows():
-            performance.append({
-                'date': date.strftime('%Y-%m-%d'),
-                'value': row['cumulative_value']
-            })
-        
-        return performance
+        return summary
     
     def generate_daily_report(self):
         """Generate daily investment report"""
-        # Calculate portfolio metrics
-        metrics = self.calculate_portfolio_metrics()
+        # Load current prices
+        current_prices = {}
+        for symbol in ['BTC', 'ETH', 'XRP']:
+            price_file = os.path.join(config.RAW_DATA_DIRECTORY, f'{symbol}_USD.csv')
+            if os.path.exists(price_file):
+                df = pd.read_csv(price_file)
+                if not df.empty:
+                    current_prices[symbol] = df.iloc[-1]['Close']
         
         # Load recommendations
         recommendations = {}
-        for symbol in config.CRYPTO_SYMBOLS:
-            base_symbol = symbol.split('-')[0]
-            filename = os.path.join(config.DATA_DIRECTORY, 'recommendations', f"{base_symbol}_recommendations.json")
-            if os.path.exists(filename):
-                with open(filename, 'r') as f:
+        for symbol in ['BTC', 'ETH', 'XRP']:
+            rec_file = os.path.join(config.RECOMMENDATIONS_DIRECTORY, f'{symbol}_recommendations.json')
+            if os.path.exists(rec_file):
+                with open(rec_file, 'r') as f:
                     recommendations[symbol] = json.load(f)
         
-        # Create report data
+        # Calculate performance metrics
+        metrics = self.calculate_performance_metrics(current_prices)
+        
+        # Get holdings
+        holdings = self.get_holdings_by_symbol()
+        for symbol in holdings:
+            if symbol != 'cash' and symbol in current_prices:
+                holdings[symbol]['value'] = holdings[symbol]['amount'] * current_prices[symbol]
+        
+        # Prepare report data
         report_data = {
             'date': datetime.now().strftime('%Y-%m-%d'),
-            'portfolio': self.portfolio,
+            'current_prices': current_prices,
+            'holdings': holdings,
             'metrics': metrics,
             'recommendations': recommendations,
-            'crypto_symbols': config.CRYPTO_SYMBOLS
+            'transaction_summary': self.get_transaction_summary()
         }
         
         # Generate HTML report
-        html_report = self.generate_html_report(report_data)
+        html_content = self.generate_html_report(report_data)
         
         # Save HTML report
-        report_filename = os.path.join(self.report_dir, f"daily_report_{datetime.now().strftime('%Y%m%d')}.html")
-        with open(report_filename, 'w') as f:
-            f.write(html_report)
+        report_filename = f"daily_report_{datetime.now().strftime('%Y%m%d')}.html"
+        report_path = os.path.join(self.report_dir, report_filename)
         
-        print(f"Daily report generated: {report_filename}")
+        with open(report_path, 'w') as f:
+            f.write(html_content)
         
-        # Try to generate PDF report if pdfkit is available
+        print(f"Daily report generated: {report_path}")
+        
+        # Generate PDF if pdfkit is available
         if PDFKIT_AVAILABLE:
+            pdf_path = report_path.replace('.html', '.pdf')
             try:
-                pdf_filename = os.path.join(self.report_dir, f"daily_report_{datetime.now().strftime('%Y%m%d')}.pdf")
-                pdfkit.from_string(html_report, pdf_filename)
-                print(f"PDF report generated: {pdf_filename}")
+                pdfkit.from_file(report_path, pdf_path)
+                print(f"PDF report generated: {pdf_path}")
             except Exception as e:
-                print(f"Could not generate PDF report: {str(e)}")
+                print(f"Failed to generate PDF: {e}")
         
-        return report_filename
+        return report_path
     
     def generate_html_report(self, data):
         """Generate HTML report from template"""
@@ -285,36 +364,34 @@ class PortfolioTracker:
                 body {
                     font-family: Arial, sans-serif;
                     margin: 20px;
+                    background-color: #f5f5f5;
+                }
+                .container {
+                    max-width: 1200px;
+                    margin: 0 auto;
+                    background-color: white;
+                    padding: 30px;
+                    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+                }
+                h1, h2 {
                     color: #333;
                 }
-                .header {
-                    text-align: center;
-                    margin-bottom: 30px;
-                }
-                .section {
-                    margin-bottom: 30px;
-                }
-                .summary-box {
-                    display: flex;
-                    justify-content: space-between;
-                    margin-bottom: 20px;
-                }
-                .summary-item {
-                    background-color: #f5f5f5;
-                    padding: 15px;
+                .metric-card {
+                    background-color: #f8f9fa;
+                    padding: 20px;
                     border-radius: 5px;
-                    width: 23%;
-                    text-align: center;
+                    margin: 10px 0;
                 }
                 .positive {
-                    color: green;
+                    color: #28a745;
                 }
                 .negative {
-                    color: red;
+                    color: #dc3545;
                 }
                 table {
                     width: 100%;
                     border-collapse: collapse;
+                    margin: 20px 0;
                 }
                 th, td {
                     padding: 10px;
@@ -322,81 +399,61 @@ class PortfolioTracker:
                     border-bottom: 1px solid #ddd;
                 }
                 th {
-                    background-color: #f2f2f2;
+                    background-color: #f8f9fa;
+                    font-weight: bold;
                 }
                 .recommendation {
-                    display: flex;
-                    margin-bottom: 20px;
-                }
-                .recommendation-card {
-                    background-color: #f5f5f5;
-                    padding: 15px;
+                    padding: 10px;
+                    margin: 10px 0;
                     border-radius: 5px;
-                    margin-right: 15px;
-                    width: 30%;
                 }
                 .buy {
-                    border-left: 5px solid green;
-                }
-                .sell {
-                    border-left: 5px solid red;
+                    background-color: #d4edda;
+                    border: 1px solid #c3e6cb;
                 }
                 .hold {
-                    border-left: 5px solid gray;
+                    background-color: #fff3cd;
+                    border: 1px solid #ffeeba;
                 }
-                .strong {
-                    font-weight: bold;
+                .sell {
+                    background-color: #f8d7da;
+                    border: 1px solid #f5c6cb;
                 }
             </style>
         </head>
         <body>
-            <div class="header">
+            <div class="container">
                 <h1>Cryptocurrency Investment Daily Report</h1>
-                <p>{{ data.date }}</p>
-            </div>
-            
-            <div class="section">
-                <h2>Portfolio Summary</h2>
-                <div class="summary-box">
-                    <div class="summary-item">
-                        <h3>Total Invested</h3>
-                        <p>CHF {{ "%.2f"|format(data.metrics.total_invested) }}</p>
-                    </div>
-                    <div class="summary-item">
-                        <h3>Current Value</h3>
-                        <p>CHF {{ "%.2f"|format(data.metrics.current_value) }}</p>
-                    </div>
-                    <div class="summary-item">
-                        <h3>Profit/Loss</h3>
-                        <p class="{{ 'positive' if data.metrics.profit_loss >= 0 else 'negative' }}">
-                            CHF {{ "%.2f"|format(data.metrics.profit_loss) }}
-                        </p>
-                    </div>
-                    <div class="summary-item">
-                        <h3>Return</h3>
-                        <p class="{{ 'positive' if data.metrics.profit_loss_pct >= 0 else 'negative' }}">
-                            {{ "%.2f"|format(data.metrics.profit_loss_pct) }}%
-                        </p>
-                    </div>
+                <p>Date: {{ data.date }}</p>
+                
+                <h2>Portfolio Overview</h2>
+                <div class="metric-card">
+                    <h3>Performance Metrics</h3>
+                    <p>Total Invested: CHF {{ "%.2f"|format(data.metrics.total_invested) }}</p>
+                    <p>Current Value: CHF {{ "%.2f"|format(data.metrics.current_value) }}</p>
+                    <p class="{% if data.metrics.total_return >= 0 %}positive{% else %}negative{% endif %}">
+                        Total Return: CHF {{ "%.2f"|format(data.metrics.total_return) }} 
+                        ({{ "%.2f"|format(data.metrics.return_percentage) }}%)
+                    </p>
                 </div>
-            </div>
-            
-            <div class="section">
-                <h2>Holdings</h2>
+                
+                <h2>Current Holdings</h2>
                 <table>
                     <tr>
                         <th>Asset</th>
-                        <th>Amount</th>
+                        <th>Current Price</th>
+                        <th>Holdings</th>
                         <th>Value (CHF)</th>
                         <th>Allocation</th>
                     </tr>
-                    {% for symbol, holding in data.portfolio.holdings.items() %}
+                    {% for symbol, holding in data.holdings.items() %}
                     <tr>
+                        <td>{{ symbol }}</td>
                         <td>
                             {% if symbol == 'cash' %}
-                                Cash
+                                -
                             {% else %}
-                                {{ data.crypto_symbols[symbol] }} ({{ symbol }})
+                                CHF {{ "%.2f"|format(data.current_prices[symbol]) }}
                             {% endif %}
                         </td>
                         <td>
@@ -416,4 +473,67 @@ class PortfolioTracker:
                         <td>
                             {{ "%.2f"|format(data.metrics.allocation[symbol]) }}%
                         </td>
- <response clipped><NOTE>To save on context only part of this file has been shown to you. You should retry this tool after you have searched inside the file with `grep -n` in order to find the line numbers of what you are looking for.</NOTE>
+                    </tr>
+                    {% endfor %}
+                </table>
+                
+                <h2>Investment Recommendations</h2>
+                {% for symbol, rec in data.recommendations.items() %}
+                <div class="recommendation {{ rec.recommendation.lower() }}">
+                    <h3>{{ symbol }}</h3>
+                    <p><strong>Recommendation:</strong> {{ rec.recommendation }}</p>
+                    <p><strong>Confidence:</strong> {{ "%.2f"|format(rec.confidence * 100) }}%</p>
+                    <p><strong>Predicted Returns:</strong></p>
+                    <ul>
+                        <li>1 Day: {{ "%.2f"|format(rec.predicted_returns['1_day']) }}%</li>
+                        <li>7 Days: {{ "%.2f"|format(rec.predicted_returns['7_day']) }}%</li>
+                        <li>30 Days: {{ "%.2f"|format(rec.predicted_returns['30_day']) }}%</li>
+                    </ul>
+                </div>
+                {% endfor %}
+                
+                <h2>Recent Transactions</h2>
+                <table>
+                    <tr>
+                        <th>Date</th>
+                        <th>Type</th>
+                        <th>Symbol</th>
+                        <th>Amount</th>
+                        <th>Price</th>
+                        <th>Total</th>
+                    </tr>
+                    {% for tx in data.transaction_summary.transactions %}
+                    <tr>
+                        <td>{{ tx.timestamp }}</td>
+                        <td>{{ tx.type }}</td>
+                        <td>{{ tx.symbol }}</td>
+                        <td>{{ "%.6f"|format(tx.amount) }}</td>
+                        <td>CHF {{ "%.2f"|format(tx.price) }}</td>
+                        <td>CHF {{ "%.2f"|format(tx.total) }}</td>
+                    </tr>
+                    {% endfor %}
+                </table>
+            </div>
+        </body>
+        </html>
+        """
+        
+        # Create Jinja2 template
+        template = jinja2.Template(template_str)
+        
+        # Render template with data
+        html_content = template.render(data=data)
+        
+        return html_content
+
+# Example usage
+if __name__ == "__main__":
+    tracker = PortfolioTracker()
+    
+    # Example: Buy some Bitcoin
+    success, message = tracker.buy_crypto('BTC', 0.001, 50000)
+    print(message)
+    
+    # Generate daily report
+    report_path = tracker.generate_daily_report()
+    print(f"Report generated: {report_path}")
