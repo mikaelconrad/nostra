@@ -9,8 +9,10 @@ This application provides an engaging way to learn cryptocurrency trading throug
 Key features:
 - **Interactive Trading Game**: Simulate trading over customizable time periods (7-365 days)
 - **AI Prediction Charts**: View 7, 14, and 30-day price predictions with visual forecasting
+- **Social Sentiment Analysis**: Real-time Reddit sentiment monitoring and market mood tracking
 - **Real Historical Data**: Trade using actual cryptocurrency price data
 - **Portfolio Management**: Track your virtual portfolio performance in real-time
+- **Sentiment-Based Trading Signals**: Get buy/sell recommendations based on community sentiment
 - **Performance Analytics**: Comprehensive results and trading history analysis
 - **Risk-Free Learning**: Practice trading strategies without financial risk
 
@@ -21,12 +23,14 @@ The application consists of the following components:
 1. **Backend**
    - Historical cryptocurrency data (CSV files)
    - AI prediction models for price forecasting
+   - Social sentiment analysis engine with Reddit and market data integration
    - Game state management and portfolio tracking
-   - Trading simulation engine
+   - Trading simulation engine with sentiment-based signals
 
 2. **Frontend**
    - Interactive trading interface (Dash)
    - Real-time price charts and AI predictions (Plotly)
+   - Social sentiment dashboard with live community data
    - Portfolio visualization and management
    - Game setup and results analysis
 
@@ -55,9 +59,16 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-4. Optional dependencies for enhanced functionality:
+4. Configure environment variables:
+```
+cp .env.example .env
+# Edit .env with your API keys (see Setup Guide below)
+```
+
+5. Optional dependencies for enhanced functionality:
 ```
 pip install kaleido  # For chart exports
+python -c "import nltk; nltk.download('vader_lexicon')"  # For advanced sentiment analysis
 ```
 
 ## Usage
@@ -80,6 +91,30 @@ Press Ctrl+C to stop the server
 ```
 
 Open your browser and navigate to: **http://localhost:8050**
+
+### Social Sentiment Analysis
+
+The app now includes a comprehensive social sentiment analysis system:
+
+**🔧 Quick Setup:**
+1. Get Reddit API credentials from [Reddit Apps](https://www.reddit.com/prefs/apps)
+2. Get CoinGecko API key from [CoinGecko API](https://www.coingecko.com/en/api) (optional)
+3. Add credentials to your `.env` file
+4. Run sentiment collection: `python run_sentiment_service.py once`
+
+**📱 Features:**
+- **Live Reddit Monitoring**: Real-time sentiment from r/Bitcoin, r/ethereum, r/CryptoCurrency
+- **Sentiment Dashboard**: Visual gauges, trend charts, and community metrics
+- **Trading Signals**: AI-powered buy/sell recommendations based on sentiment
+- **Market Mood Tracking**: Fear & Greed Index and social volume indicators
+
+**📊 Data Sources:**
+- Reddit posts and comments with crypto-specific sentiment analysis
+- CoinGecko community scores and social metrics
+- Alternative.me Fear & Greed Index
+- Real-time social volume and engagement tracking
+
+See `SENTIMENT_SETUP.md` for detailed configuration instructions.
 
 ### How to Play
 

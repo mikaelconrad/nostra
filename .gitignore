@@ -17,8 +17,11 @@ __pycache__/
 Thumbs.db
 
 # Data files
-data/processed/*.csv
-# Uncomment below if you want to exclude raw data as well
+data/processed/
+data/social_sentiment/daily/
+data/social_sentiment/cache/
+data/social_sentiment/aggregated/
+# Keep raw data and sentiment for demo purposes
 # data/raw/*.csv
 # data/sentiment/*.csv
 
@@ -26,6 +29,13 @@ data/processed/*.csv
 *.pkl
 *.h5
 *.model
+models/BTC/
+models/ETH/
+
+# Sentiment collection test files
+test_reddit_connection.py
+test_coingecko_connection.py
+setup_sentiment.py
 
 # Database files
 *.db
