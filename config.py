@@ -23,7 +23,7 @@ def get_env(key, default=None, cast=str):
 APP_ENV = get_env('APP_ENV', 'development')
 DEBUG = get_env('DEBUG', True, bool)
 SECRET_KEY = get_env('SECRET_KEY', 'dev-secret-key-change-in-production')
-DASHBOARD_TITLE = "Cryptocurrency Investment Recommendation System"
+DASHBOARD_TITLE = "Cryptocurrency Trading Game"
 FRONTEND_PORT = get_env('FRONTEND_PORT', 8050, int)
 API_PORT = get_env('API_PORT', 5000, int)
 THEME = get_env('THEME', 'light')
@@ -66,8 +66,6 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIRECTORY = os.path.join(BASE_DIR, 'data')
 RAW_DATA_DIRECTORY = os.path.join(DATA_DIRECTORY, 'raw')
 PROCESSED_DATA_DIRECTORY = os.path.join(DATA_DIRECTORY, 'processed')
-SENTIMENT_DATA_DIRECTORY = os.path.join(DATA_DIRECTORY, 'sentiment')
-RECOMMENDATIONS_DIRECTORY = os.path.join(DATA_DIRECTORY, 'recommendations')
 MODEL_DIRECTORY = os.path.join(BASE_DIR, 'models')
 REPORT_DIRECTORY = os.path.join(BASE_DIR, 'reports')
 LOG_DIRECTORY = os.path.join(BASE_DIR, 'logs')
@@ -81,9 +79,9 @@ DATABASE_URL = get_env('DATABASE_URL', f'sqlite:///{os.path.join(BASE_DIR, "cryp
 
 # Create directories if they don't exist
 for directory in [DATA_DIRECTORY, RAW_DATA_DIRECTORY, PROCESSED_DATA_DIRECTORY, 
-                 SENTIMENT_DATA_DIRECTORY, RECOMMENDATIONS_DIRECTORY, 
                  MODEL_DIRECTORY, REPORT_DIRECTORY, LOG_DIRECTORY]:
     os.makedirs(directory, exist_ok=True)
+
 
 # Neural network settings
 SEQUENCE_LENGTH = get_env('SEQUENCE_LENGTH', 60, int)  # days of historical data
@@ -97,18 +95,11 @@ LEARNING_RATE = get_env('LEARNING_RATE', 0.001, float)
 LOG_LEVEL = get_env('LOG_LEVEL', 'INFO')
 LOG_RETENTION_DAYS = get_env('LOG_RETENTION_DAYS', 30, int)
 
-# API Keys (for future use)
-TWITTER_API_KEY = get_env('TWITTER_API_KEY', '')
-TWITTER_API_SECRET = get_env('TWITTER_API_SECRET', '')
-TWITTER_ACCESS_TOKEN = get_env('TWITTER_ACCESS_TOKEN', '')
-TWITTER_ACCESS_SECRET = get_env('TWITTER_ACCESS_SECRET', '')
-
 # Data settings
 DATA_UPDATE_INTERVAL = get_env('DATA_UPDATE_INTERVAL', 3600, int)  # seconds
 MAX_HISTORICAL_DAYS = get_env('MAX_HISTORICAL_DAYS', 1825, int)  # 5 years
 
 # Feature flags
-ENABLE_REAL_SENTIMENT = get_env('ENABLE_REAL_SENTIMENT', False, bool)
 ENABLE_LIVE_TRADING = get_env('ENABLE_LIVE_TRADING', False, bool)
 ENABLE_EMAIL_REPORTS = get_env('ENABLE_EMAIL_REPORTS', False, bool)
 
@@ -128,6 +119,5 @@ if DEBUG and APP_ENV == 'development':
     print(f"API Port: {API_PORT}")
     print(f"Frontend Port: {FRONTEND_PORT}")
     print(f"Database: {DATABASE_URL}")
-    print(f"Real Sentiment: {ENABLE_REAL_SENTIMENT}")
     print(f"Live Trading: {ENABLE_LIVE_TRADING}")
     print("="*50)

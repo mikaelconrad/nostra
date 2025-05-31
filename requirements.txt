@@ -1,4 +1,5 @@
-#Requirements file for Cryptocurrency Investment Recommendation System
+# Requirements file for Cryptocurrency Trading Game
+# Educational trading simulator with AI price predictions
 
 # Data analysis and manipulation
 pandas==2.2.3
@@ -8,8 +9,9 @@ numpy==2.1.3
 matplotlib==3.10.1
 plotly==6.0.1
 dash==3.0.0
+dash-bootstrap-components==1.6.0
 
-# Machine learning and neural networks
+# Machine learning and neural networks (for price predictions)
 scikit-learn==1.6.1
 tensorflow==2.19.0
 keras==3.9.0
@@ -18,38 +20,20 @@ keras==3.9.0
 requests==2.32.3
 yfinance==0.2.55
 
-# Natural language processing
-nltk==3.9.1
-textblob==0.19.0
-
 # Web framework
 Flask==3.0.3
 Flask-CORS==4.0.0
-dash-bootstrap-components==1.6.0
 
 # Configuration
 python-dotenv==1.0.0
 
-# Social media and sentiment analysis
-praw==7.7.1
-beautifulsoup4==4.12.3
-vaderSentiment==3.3.2
-
-# Database
-SQLAlchemy==2.0.25
-alembic==1.13.1
-
-# Reporting
+# Reporting (optional)
 jinja2==3.1.6
-pdfkit==1.0.0
 
 # Testing
 pytest==8.0.0
 pytest-cov==4.1.0
 pytest-mock==3.12.0
-pytest-asyncio==0.23.0
-requests-mock==1.11.0
 
 # Optional dependencies
 # kaleido  # For chart exports
-# wkhtmltopdf  # For PDF generation (system package)

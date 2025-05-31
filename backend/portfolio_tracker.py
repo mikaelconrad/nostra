@@ -302,13 +302,6 @@ class PortfolioTracker:
                 if not df.empty:
                     current_prices[symbol] = df.iloc[-1]['Close']
         
-        # Load recommendations
-        recommendations = {}
-        for symbol in ['BTC', 'ETH']:
-            rec_file = os.path.join(config.RECOMMENDATIONS_DIRECTORY, f'{symbol}_recommendations.json')
-            if os.path.exists(rec_file):
-                with open(rec_file, 'r') as f:
-                    recommendations[symbol] = json.load(f)
         
         # Calculate performance metrics
         metrics = self.calculate_performance_metrics(current_prices)
@@ -325,7 +318,6 @@ class PortfolioTracker:
             'current_prices': current_prices,
             'holdings': holdings,
             'metrics': metrics,
-            'recommendations': recommendations,
             'transaction_summary': self.get_transaction_summary()
         }
         
@@ -477,20 +469,6 @@ class PortfolioTracker:
                     {% endfor %}
                 </table>
                 
-                <h2>Investment Recommendations</h2>
-                {% for symbol, rec in data.recommendations.items() %}
-                <div class="recommendation {{ rec.recommendation.lower() }}">
-                    <h3>{{ symbol }}</h3>
-                    <p><strong>Recommendation:</strong> {{ rec.recommendation }}</p>
-                    <p><strong>Confidence:</strong> {{ "%.2f"|format(rec.confidence * 100) }}%</p>
-                    <p><strong>Predicted Returns:</strong></p>
-                    <ul>
-                        <li>1 Day: {{ "%.2f"|format(rec.predicted_returns['1_day']) }}%</li>
-                        <li>7 Days: {{ "%.2f"|format(rec.predicted_returns['7_day']) }}%</li>
-                        <li>30 Days: {{ "%.2f"|format(rec.predicted_returns['30_day']) }}%</li>
-                    </ul>
-                </div>
-                {% endfor %}
                 
                 <h2>Recent Transactions</h2>
                 <table>

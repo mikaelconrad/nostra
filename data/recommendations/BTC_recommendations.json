@@ -1,9 +1,0 @@
-{
-  "recommendation": "BUY",
-  "confidence": 0.75,
-  "predicted_returns": {
-    "1_day": 2.5,
-    "7_day": 5.2,
-    "30_day": 15.8
-  }
-}

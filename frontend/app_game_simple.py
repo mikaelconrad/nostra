@@ -15,16 +15,6 @@ import os
 
 import config
 from frontend.game_state import game_instance
-from frontend.components.sentiment_panel import (
-    create_sentiment_panel_layout, get_sentiment_data,
-    create_sentiment_gauge, create_sentiment_trend_chart,
-    create_reddit_highlights_carousel, create_community_metrics_display,
-    create_sentiment_stats_display
-)
-from frontend.components.sentiment_signals import (
-    create_sentiment_trading_signals, create_sentiment_events_timeline,
-    create_sentiment_strategy_suggestions, create_sentiment_game_features
-)
 import threading
 import plotly.graph_objects as go
 
@@ -695,19 +685,6 @@ def create_trading_screen():
             ])
         ], className="mt-4"),
         
-        # Social Sentiment Panel
-        dbc.Row([
-            dbc.Col([
-                create_sentiment_panel_layout()
-            ])
-        ]),
-        
-        # Sentiment Game Features
-        dbc.Row([
-            dbc.Col([
-                create_sentiment_game_features()
-            ])
-        ])
     ], fluid=True)
 
 
@@ -1362,112 +1339,7 @@ def update_prediction_charts(active_tab, game_data, training_status_data, select
     return html.Div("Select a cryptocurrency to view predictions", className="text-center text-muted p-4")
 
 
-# Sentiment Panel Callbacks
-@app.callback(
-    [Output("sentiment-gauge", "figure"),
-     Output("sentiment-trend", "figure"),
-     Output("reddit-highlights", "children"),
-     Output("community-metrics", "children"),
-     Output("sentiment-stats", "children"),
-     Output("sentiment-last-updated", "children")],
-    [Input("prediction-tabs", "active_tab"),
-     Input("refresh-sentiment-btn", "n_clicks")],
-    prevent_initial_call=False
-)
-def update_sentiment_panel(active_tab, refresh_clicks):
-    """Update all sentiment panel components"""
-    # Determine which cryptocurrency to show sentiment for
-    coin = "BTC" if active_tab == "pred-btc" else "ETH"
-    
-    # Get sentiment data (real or mock)
-    sentiment_data = get_sentiment_data(coin)
-    
-    # Create sentiment gauge
-    gauge_fig = create_sentiment_gauge(
-        sentiment_data['current_sentiment'],
-        sentiment_data['confidence'],
-        sentiment_data['signal_strength']
-    )
-    
-    # Create trend chart
-    trend_fig = create_sentiment_trend_chart(sentiment_data['trend_data'])
-    
-    # Create Reddit highlights
-    reddit_highlights = create_reddit_highlights_carousel(sentiment_data['reddit_posts'])
-    
-    # Create community metrics
-    community_metrics = create_community_metrics_display(sentiment_data['community_metrics'])
-    
-    # Create sentiment stats
-    sentiment_stats = create_sentiment_stats_display(sentiment_data['trend_data'])
-    
-    # Last updated timestamp
-    last_updated = f"Last updated: {sentiment_data['last_updated']}"
-    
-    return (gauge_fig, trend_fig, reddit_highlights, community_metrics, 
-            sentiment_stats, last_updated)
-
-
-@app.callback(
-    Output("sentiment-gauge", "figure", allow_duplicate=True),
-    [Input("historical-sentiment-btn", "n_clicks")],
-    prevent_initial_call=True
-)
-def show_historical_sentiment(n_clicks):
-    """Show historical sentiment data (placeholder)"""
-    if n_clicks:
-        # For now, just return a modified gauge with different data
-        historical_sentiment = -0.2  # Example historical sentiment
-        return create_sentiment_gauge(historical_sentiment, 0.75, "moderate")
-    return dash.no_update
-
-
-@app.callback(
-    Output("sentiment-gauge", "figure", allow_duplicate=True),
-    [Input("sentiment-settings-btn", "n_clicks")],
-    prevent_initial_call=True
-)
-def show_sentiment_settings(n_clicks):
-    """Show sentiment settings (placeholder)"""
-    if n_clicks:
-        # For now, just return the current gauge
-        sentiment_data = get_sentiment_data("BTC")
-        return create_sentiment_gauge(
-            sentiment_data['current_sentiment'],
-            sentiment_data['confidence'],
-            sentiment_data['signal_strength']
-        )
-    return dash.no_update
-
-
-# Sentiment Game Features Callbacks
-@app.callback(
-    [Output("sentiment-trading-signals", "children"),
-     Output("sentiment-events-timeline", "children"),
-     Output("sentiment-strategy-suggestions", "children")],
-    [Input("prediction-tabs", "active_tab"),
-     Input("refresh-sentiment-btn", "n_clicks")],
-    prevent_initial_call=False
-)
-def update_sentiment_game_features(active_tab, refresh_clicks):
-    """Update sentiment-based game features"""
-    # Determine which cryptocurrency
-    coin = "BTC" if active_tab == "pred-btc" else "ETH"
-    
-    # Get sentiment data
-    sentiment_data = get_sentiment_data(coin)
-    
-    # Create trading signals
-    trading_signals = create_sentiment_trading_signals(sentiment_data)
-    
-    # Create events timeline
-    events_timeline = create_sentiment_events_timeline(sentiment_data)
-    
-    # Create strategy suggestions
-    strategy_suggestions = create_sentiment_strategy_suggestions(sentiment_data)
-    
-    return trading_signals, events_timeline, strategy_suggestions
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=8062, host="0.0.0.0")
+    app.run(debug=True, port=8050, host="0.0.0.0")

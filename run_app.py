@@ -46,7 +46,7 @@ def start_frontend():
     global frontend_process
     logger.info(f"Starting frontend on port {config.FRONTEND_PORT}...")
     frontend_process = subprocess.Popen(
-        [sys.executable, "frontend/app_api.py"],
+        [sys.executable, "frontend/app_game_simple.py"],
         cwd=os.path.dirname(os.path.abspath(__file__))
     )
 
@@ -68,7 +68,7 @@ def check_requirements():
 def main():
     """Main application entry point"""
     logger.info("="*50)
-    logger.info("Cryptocurrency Investment Recommendation System")
+    logger.info("Cryptocurrency Trading Game")
     logger.info("="*50)
     
     # Register signal handler
